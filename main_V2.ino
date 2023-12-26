@@ -4,24 +4,32 @@
 #include <ESPmDNS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebSrv.h>
+#include <RCSwitch.h>
+#include <WiFiClientSecure.h>
 
 AsyncWebServer server(80);
-
+const char* homeAssistantIP = "192.168.68.162";
+const int homeAssistantPort = 443;
 const char* configFilePath = "/config.json";
 const char* configResetFilePath = "/blank_config.json";
 bool arestart = false;
 bool isWifiSet = false;
+bool debug = false;
 
 DynamicJsonDocument configJson(512);
-
+RCSwitch mySwitch = RCSwitch();
 File configFile;
+
+
+
 
 void setup() {
   Serial.begin(9600);
   delay(1000);
-
+  mySwitch.enableReceive(32);
   if (!SPIFFS.begin()) {
-    Serial.println(F("Failed to mount file system"));
+    printErrorCodetoSerial(1, debug);
+    //Serial.println(F("Failed to mount file system"));
     return;
   }
   delay(1000);
@@ -40,20 +48,31 @@ void setup() {
 }
 
 void loop() {
+    if (mySwitch.available()) {
+        unsigned long currentMillis = millis();
+
+        if (configJson["LearningEnabled"]) {
+            addDevicetoJSON(mySwitch.getReceivedValue());
+            delay(3000);
+
+            // Call the function to send the webhook
+            
+        } else {
+          
+          unsigned long receivedCode = mySwitch.getReceivedValue();
+          if(checkRF(receivedCode)){
+            sendWebhook(receivedCode);
+          }
+        }
+
+        mySwitch.resetAvailable();
+    }
+  
   if (arestart) {
     delay(1000);
     ESP.restart();
     arestart = false;
   }
-}
-
-void readJsonFile() {
-  configFile = SPIFFS.open(configFilePath, "r");
-  DeserializationError error = deserializeJson(configJson, configFile);
-  if (error) {
-    Serial.println(F("Error reading config file"));
-  }
-  configFile.close();
 }
 
 void handleWifiConfiguration(const char* ssid, const char* password, const char* reset) {
@@ -71,7 +90,58 @@ void handleWifiConfiguration(const char* ssid, const char* password, const char*
   }
 }
 
+void printErrorCodetoSerial(uint8_t errorCode, bool enableSerial){
+  if(enableSerial){
+    Serial.println("Error Code: " + String(errorCode));
+  }
+}
+
+void readJsonFile() {
+  configFile = SPIFFS.open(configFilePath, "r");
+  DeserializationError error = deserializeJson(configJson, configFile);
+  if (error) {
+    printErrorCodetoSerial(2, debug);
+    //Serial.println(F("Error reading config file"));
+  }
+  configFile.close();
+}
+
+bool checkRF(unsigned long rfcode){
+  JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
+  for (JsonObject entry : rfcodesArray) {
+    if (entry["code"].as<unsigned long>() == rfcode) {
+       return true;
+    }
+  }
+  return false;
+}
+void sendWebhook(unsigned long rfcode) {
+
+ 
+
+    WiFiClientSecure client;
+    client.setInsecure();  // Disable SSL certificate validation
+
+            String url = "/api/webhook/" + String(rfcode);
+
+            if (client.connect(homeAssistantIP, homeAssistantPort)) {
+                // Make a POST request
+                client.print("POST " + url + " HTTP/1.1\r\n");
+                client.print("Host: " + String(homeAssistantIP) + "\r\n");
+                client.print("Connection: close\r\n");
+                client.print("Content-Length: 0\r\n\r\n");
+ 
+                client.stop();
+                
+            }
+ 
+            return;
+}
+
+
+
 void setupRoutes() {
+  
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
     const char* page = (isWifiSet) ? "/index.html" : "/wificonfig.html";
     request->send(SPIFFS, page, String(), false);
@@ -94,10 +164,29 @@ void setupRoutes() {
     
     arestart = true;
   });
+  
   server.on("/getPageInfo", HTTP_GET, [](AsyncWebServerRequest *request){
     sendJSONToClient(request);
   });
+
+  server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
+    configJson["LearningEnabled"] = true;
+    request->redirect("/");
+  });
+  server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
+    configJson["LearningEnabled"] = false;
+    request->redirect("/");
+  });
+server.on("/deleteRfCode", HTTP_POST, [](AsyncWebServerRequest *request) {
+    String codeToDelete = request->arg("code").c_str();
+    unsigned long code = strtoul(codeToDelete.c_str(), NULL, 10);
+    deleteRfCodeFromJson(code);
+
+    request->send(200, "text/plain", "RF code deleted successfully");
+});
+  
 }
+
 void sendJSONToClient(AsyncWebServerRequest *request) {
   
     // Convert the DynamicJsonDocument to a string
@@ -123,13 +212,10 @@ void saveConfigToFile() {
 }
 
 void createAP(const char* ssid, const char* password) {
-  Serial.println(F("Creating Access Point"));
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, password);
 
   IPAddress IP = WiFi.softAPIP();
-  Serial.print("AP IP address: ");
-  Serial.println(IP);
 }
 
 void resetConfigFile() {
@@ -142,34 +228,32 @@ void resetConfigFile() {
     }
     configFile.close();
     blankConfigFile.close();
-    Serial.println(F("Config file reset"));
   } else {
-    Serial.println(F("Error resetting config file"));
+    printErrorCodetoSerial(3, debug);
+    //Serial.println(F("Error resetting config file"));
   }
 }
 
 void mdns(){
   if (!MDNS.begin("rfbridge")) {
-    Serial.println(F("Error setting up mDNS"));
+    printErrorCodetoSerial(4, debug);
+    //Serial.println(F("Error setting up mDNS"));
   } else {
-    Serial.println(F("mDNS responder started"));
   }
 }
 
 void connectToWiFi(const char* ssid, const char* password) {
-  Serial.println(F("Connecting to WiFi"));
   
   int attempts = 0;
   while (attempts < 5) {
     WiFi.begin(ssid, password);
     while (WiFi.status() != WL_CONNECTED && attempts < 5) {
       delay(1000);
-      Serial.println(F("Connecting to WiFi..."));
       attempts++;
     }
     
     if (WiFi.status() == WL_CONNECTED) {
-      Serial.println(F("Connected to WiFi"));
+      
       break;
     } else {
       Serial.println(F("Connection failed. Retrying..."));
@@ -178,7 +262,48 @@ void connectToWiFi(const char* ssid, const char* password) {
   }
   
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
+    printErrorCodetoSerial(5, debug);
+    //Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
     createAP("rfbridge", "rfbridge");
   }
+}
+
+void addDevicetoJSON(unsigned long receivedCode){
+  JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
+      for (JsonObject entry : rfcodesArray) {
+        if (entry["code"].as<unsigned long>() == receivedCode) {
+            // Code already exists, you can choose to update the webhook or reject the new learning attempt
+           printErrorCodetoSerial(6, debug);
+            return;
+        }
+      }
+         JsonObject newEntry = rfcodesArray.createNestedObject();
+          newEntry["code"] = receivedCode;
+          configJson["LearningEnabled"] = false;
+          saveConfigToFile();
+        
+    
+}
+
+void deleteRfCodeFromJson(unsigned long codeToDelete) {
+  // Ensure that the JSON document contains an array named "rfcodes"
+  JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
+
+  // Iterate through the array to find and remove the specified code
+  for (int i = 0; i < rfcodesArray.size(); i++) {
+    unsigned long code = rfcodesArray[i]["code"].as<unsigned long>();
+    if (code == codeToDelete) {
+      // Remove the code from the array
+      rfcodesArray.remove(i);
+
+      // Save the updated configuration to the file
+      saveConfigToFile();
+
+      // Exit the loop since the code has been found and removed
+      return;
+    }
+  }
+
+  // If the codeToDelete was not found, you may want to log or handle this situation
+  printErrorCodetoSerial(7, debug); // Use a new error code for this scenario, e.g., 7
 }
