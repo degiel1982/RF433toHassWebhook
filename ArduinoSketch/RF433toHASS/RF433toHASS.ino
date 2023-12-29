@@ -10,18 +10,46 @@
 
 class FileSystemSPIFFS{
   public:
+  DynamicJsonDocument JSON_MEMORY{512};
   bool init(){
     if (!SPIFFS.begin()) {
-      Serial.println(F("Failed to mount file system"));
       return false;
     }
-    Serial.println(F("Mounting the file system"));
     return true;
   }
+  
+  bool readJsonFileToMemory() {
+    configFile = SPIFFS.open(configFilePath, "r");
+    DeserializationError error = deserializeJson(JSON_MEMORY, configFile);
+    if (error) {
+      return false;
+    }
+    configFile.close();
+    return true;
+  }
+  
+  bool saveJsonMemoryToFile() {
+    configFile = SPIFFS.open(configFilePath, "w");
+    if (configFile) {
+      serializeJson(JSON_MEMORY, configFile);
+      configFile.close();
+      return true;
+    }
+    else{
+      return false;
+    }
+  }
+  
+  private:
+    File configFile;
+    const char* configFilePath = "/config.json";
+    const char* configResetFilePath = "/blank_config.json";
+    
 };
 
-
+FileSystemSPIFFS FileSystemSPIFFS;
 AsyncWebServer server(80);
+
 
 const char* homeAssistantIP = "192.168.68.162";
 const int homeAssistantPort = 443;
@@ -31,39 +59,53 @@ bool arestart = false;
 bool isWifiSet = false;
 bool debug = false;
 
-DynamicJsonDocument configJson(512);
+
 RCSwitch mySwitch = RCSwitch();
-File configFile;
+
 
 void setup() {
-  delay(500);
+  delay(1000);
   Serial.begin(9600);
   if(Serial){
-    delay(500);
+    delay(1000);
     mySwitch.enableReceive(32);
-    FileSystemSPIFFS FileSystemSPIFFS;
+    
     if(FileSystemSPIFFS.init()){
-      delay(500);
-      if(readJsonFileToMemory()){
-        handleWifiConfiguration(configJson["wifi_credentials"][0]["ssid"], configJson["wifi_credentials"][0]["password"], configJson["reset"]);
+      Serial.println(F("Mounting the file system"));      
+      delay(1000);
+      if(FileSystemSPIFFS.readJsonFileToMemory()){
+        Serial.println(F("JSON copied to memory"));
+        
+        Serial.println(F("Starting WIFI Configuration"));
+        handleWifiConfiguration(FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["ssid"], FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["password"], FileSystemSPIFFS.JSON_MEMORY["reset"]);
         setupRoutes();
-        Serial.println(F("Server is starting"));
         server.begin();
+        Serial.println(F("Server is starting"));
+
+        }
+      }
+      else{
+        Serial.println(F("Error reading json file"));
+        return;
       }
     }
+    else{
+      Serial.println(F("Failed to mount file system"));
+      return;
+    }
   }
-}
+
 
 void loop() {
   if (mySwitch.available()) {
-    if (configJson["LearningEnabled"]) {
+    if (FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"]) {
       addDevicetoJSON(mySwitch.getReceivedValue());
       delay(3000);
     } 
     else {
-      unsigned long receivedCode = mySwitch.getReceivedValue();
-      if(checkRF(receivedCode)){
-        sendWebhook(receivedCode);
+      
+      if(checkRF(mySwitch.getReceivedValue())){
+        sendWebhook(mySwitch.getReceivedValue());
       }
     }
     mySwitch.resetAvailable();
@@ -100,21 +142,9 @@ void printErrorCodetoSerial(uint8_t errorCode, bool enableSerial){
   }
 }
 
-bool readJsonFileToMemory() {
-  configFile = SPIFFS.open(configFilePath, "r");
-  DeserializationError error = deserializeJson(configJson, configFile);
-  if (error) {
-    
-    Serial.println(F("Error reading json file"));
-    return false;
-  }
-  Serial.println(F("JSON copied to memory"));
-  configFile.close();
-  return true;
-}
 
 bool checkRF(unsigned long rfcode){
-  JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
+  JsonArray rfcodesArray = FileSystemSPIFFS.JSON_MEMORY["rfcodes"].as<JsonArray>();
   for (JsonObject entry : rfcodesArray) {
     if (entry["code"].as<unsigned long>() == rfcode) {
       Serial.println("Match found");
@@ -163,11 +193,11 @@ void setupRoutes() {
     String ssid = request->arg("ssid");
     String password = request->arg("password");
 
-    configJson["wifi_credentials"][0]["ssid"] = ssid.c_str();
-    configJson["wifi_credentials"][0]["password"] = password.c_str();
-    configJson["reset"] = "false";
+    FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["ssid"] = ssid.c_str();
+    FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["password"] = password.c_str();
+    FileSystemSPIFFS.JSON_MEMORY["reset"] = "false";
 
-    saveConfigToFile();
+   FileSystemSPIFFS.saveJsonMemoryToFile();
     request->redirect("/");
     
     arestart = true;
@@ -178,7 +208,7 @@ void setupRoutes() {
   });
 
   server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    configJson["LearningEnabled"] = true;
+    FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = true;
     String content = "{\"success\": true }";
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -189,7 +219,7 @@ void setupRoutes() {
 
   
   server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    configJson["LearningEnabled"] = false;
+    FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = false;
     String content = "{\"success\": true }";
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -215,7 +245,7 @@ void sendJSONToClient(AsyncWebServerRequest *request) {
   
     // Convert the DynamicJsonDocument to a string
     String content;
-    serializeJson(configJson, content);
+    serializeJson(FileSystemSPIFFS.JSON_MEMORY, content);
 
     // Create an AsyncWebServerResponse instance and set CORS headers
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
@@ -227,13 +257,7 @@ void sendJSONToClient(AsyncWebServerRequest *request) {
     request->send(response);
 }
 
-void saveConfigToFile() {
-  configFile = SPIFFS.open(configFilePath, "w");
-  if (configFile) {
-    serializeJson(configJson, configFile);
-    configFile.close();
-  }
-}
+
 
 void createAP(const char* ssid, const char* password) {
   WiFi.mode(WIFI_AP);
@@ -293,7 +317,7 @@ void connectToWiFi(const char* ssid, const char* password) {
 }
 
 void addDevicetoJSON(unsigned long receivedCode){
-  JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
+  JsonArray rfcodesArray = FileSystemSPIFFS.JSON_MEMORY["rfcodes"].as<JsonArray>();
       for (JsonObject entry : rfcodesArray) {
         if (entry["code"].as<unsigned long>() == receivedCode) {
             // Code already exists, you can choose to update the webhook or reject the new learning attempt
@@ -303,8 +327,8 @@ void addDevicetoJSON(unsigned long receivedCode){
       }
          JsonObject newEntry = rfcodesArray.createNestedObject();
           newEntry["code"] = receivedCode;
-          configJson["LearningEnabled"] = false;
-          saveConfigToFile();
+          FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = false;
+          FileSystemSPIFFS.saveJsonMemoryToFile();
         
     
 }
