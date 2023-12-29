@@ -38,16 +38,18 @@ File configFile;
 void setup() {
   delay(500);
   Serial.begin(9600);
-  delay(500);
-  mySwitch.enableReceive(32);
-  FileSystemSPIFFS FileSystemSPIFFS;
-  if(FileSystemSPIFFS.init()){
+  if(Serial){
     delay(500);
-    if(readJsonFileToMemory()){
-      handleWifiConfiguration(configJson["wifi_credentials"][0]["ssid"], configJson["wifi_credentials"][0]["password"], configJson["reset"]);
-      setupRoutes();
-      Serial.println(F("Server is starting"));
-      server.begin();
+    mySwitch.enableReceive(32);
+    FileSystemSPIFFS FileSystemSPIFFS;
+    if(FileSystemSPIFFS.init()){
+      delay(500);
+      if(readJsonFileToMemory()){
+        handleWifiConfiguration(configJson["wifi_credentials"][0]["ssid"], configJson["wifi_credentials"][0]["password"], configJson["reset"]);
+        setupRoutes();
+        Serial.println(F("Server is starting"));
+        server.begin();
+      }
     }
   }
 }
@@ -195,12 +197,6 @@ void setupRoutes() {
     response->addHeader("Access-Control-Allow-Headers", "Content-Type");
     request->send(response);
   });
-
-
-
-server.on("/api", HTTP_POST, handlePostRequest);
-
-
 
 
 
