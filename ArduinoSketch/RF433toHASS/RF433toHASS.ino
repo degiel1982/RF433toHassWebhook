@@ -8,6 +8,18 @@
 #include <WiFiClientSecure.h>
 
 
+class FileSystemSPIFFS{
+  public:
+  bool init(){
+    if (!SPIFFS.begin()) {
+      Serial.println(F("Failed to mount file system"));
+      return false;
+    }
+    Serial.println(F("Mounting the file system"));
+    return true;
+  }
+};
+
 
 AsyncWebServer server(80);
 
@@ -24,52 +36,36 @@ RCSwitch mySwitch = RCSwitch();
 File configFile;
 
 void setup() {
+  delay(500);
   Serial.begin(9600);
-  delay(1000);
+  delay(500);
   mySwitch.enableReceive(32);
-  if (!SPIFFS.begin()) {
-    printErrorCodetoSerial(1, debug);
-    //Serial.println(F("Failed to mount file system"));
-    return;
+  FileSystemSPIFFS FileSystemSPIFFS;
+  if(FileSystemSPIFFS.init()){
+    delay(500);
+    if(readJsonFileToMemory()){
+      handleWifiConfiguration(configJson["wifi_credentials"][0]["ssid"], configJson["wifi_credentials"][0]["password"], configJson["reset"]);
+      setupRoutes();
+      Serial.println(F("Server is starting"));
+      server.begin();
+    }
   }
-  delay(1000);
-
-  Serial.println("OTA Initialized");
-  readJsonFile();
-
-  const char* ssid = configJson["wifi_credentials"][0]["ssid"];
-  const char* password = configJson["wifi_credentials"][0]["password"];
-  const char* reset = configJson["reset"];
-
-  handleWifiConfiguration(ssid, password, reset);
-
-  setupRoutes();
-
-  server.begin();
-
 }
 
 void loop() {
-
-    if (mySwitch.available()) {
-        unsigned long currentMillis = millis();
-
-        if (configJson["LearningEnabled"]) {
-            addDevicetoJSON(mySwitch.getReceivedValue());
-            delay(3000);
-
-            // Call the function to send the webhook
-            
-        } else {
-          
-          unsigned long receivedCode = mySwitch.getReceivedValue();
-          if(checkRF(receivedCode)){
-            sendWebhook(receivedCode);
-          }
-        }
-
-        mySwitch.resetAvailable();
+  if (mySwitch.available()) {
+    if (configJson["LearningEnabled"]) {
+      addDevicetoJSON(mySwitch.getReceivedValue());
+      delay(3000);
+    } 
+    else {
+      unsigned long receivedCode = mySwitch.getReceivedValue();
+      if(checkRF(receivedCode)){
+        sendWebhook(receivedCode);
+      }
     }
+    mySwitch.resetAvailable();
+  }
   
   if (arestart) {
     delay(1000);
@@ -102,20 +98,24 @@ void printErrorCodetoSerial(uint8_t errorCode, bool enableSerial){
   }
 }
 
-void readJsonFile() {
+bool readJsonFileToMemory() {
   configFile = SPIFFS.open(configFilePath, "r");
   DeserializationError error = deserializeJson(configJson, configFile);
   if (error) {
-    printErrorCodetoSerial(2, debug);
-    //Serial.println(F("Error reading config file"));
+    
+    Serial.println(F("Error reading json file"));
+    return false;
   }
+  Serial.println(F("JSON copied to memory"));
   configFile.close();
+  return true;
 }
 
 bool checkRF(unsigned long rfcode){
   JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
   for (JsonObject entry : rfcodesArray) {
     if (entry["code"].as<unsigned long>() == rfcode) {
+      Serial.println("Match found");
        return true;
     }
   }
@@ -123,7 +123,7 @@ bool checkRF(unsigned long rfcode){
 }
 void sendWebhook(unsigned long rfcode) {
 
- 
+ Serial.println("Sending webhook");
 
     WiFiClientSecure client;
     client.setInsecure();  // Disable SSL certificate validation
@@ -195,14 +195,24 @@ void setupRoutes() {
     response->addHeader("Access-Control-Allow-Headers", "Content-Type");
     request->send(response);
   });
-server.on("/deleteRfCode", HTTP_POST, [](AsyncWebServerRequest *request) {
+
+
+
+server.on("/api", HTTP_POST, handlePostRequest);
+
+
+
+
+
+/*  
+server.on("/deleteRfCode", HTTP_POST, [](AsyncWebServerRequest *request) {server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
     String codeToDelete = request->arg("code").c_str();
     unsigned long code = strtoul(codeToDelete.c_str(), NULL, 10);
     deleteRfCodeFromJson(code);
 
     request->send(200, "text/plain", "RF code deleted successfully");
 });
-  
+*/  
 }
 
 void sendJSONToClient(AsyncWebServerRequest *request) {
@@ -254,9 +264,9 @@ void resetConfigFile() {
 
 void mdns(){
   if (!MDNS.begin("rfbridge")) {
-    printErrorCodetoSerial(4, debug);
-    //Serial.println(F("Error setting up mDNS"));
+   Serial.println(F("Error setting up mDNS"));
   } else {
+    Serial.println(F("mDNS Starting"));
   }
 }
 
@@ -302,7 +312,7 @@ void addDevicetoJSON(unsigned long receivedCode){
         
     
 }
-
+/*
 void deleteRfCodeFromJson(unsigned long codeToDelete) {
   // Ensure that the JSON document contains an array named "rfcodes"
   JsonArray rfcodesArray = configJson["rfcodes"].as<JsonArray>();
@@ -324,4 +334,4 @@ void deleteRfCodeFromJson(unsigned long codeToDelete) {
 
   // If the codeToDelete was not found, you may want to log or handle this situation
   printErrorCodetoSerial(7, debug); // Use a new error code for this scenario, e.g., 7
-}
+}*/
