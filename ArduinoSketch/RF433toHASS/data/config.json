@@ -1,0 +1,16 @@
+{
+
+    "reset":"false",
+    "LearningEnabled": false,
+    "statusMessage": "",
+    "rfcodes":[
+    
+    ],
+
+    "wifi_credentials":[
+        {
+            "ssid":"rfbridge",
+            "password":"rfbridge"
+        }
+    ]
+}

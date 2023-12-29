@@ -7,7 +7,10 @@
 #include <RCSwitch.h>
 #include <WiFiClientSecure.h>
 
+
+
 AsyncWebServer server(80);
+
 const char* homeAssistantIP = "192.168.68.162";
 const int homeAssistantPort = 443;
 const char* configFilePath = "/config.json";
@@ -20,9 +23,6 @@ DynamicJsonDocument configJson(512);
 RCSwitch mySwitch = RCSwitch();
 File configFile;
 
-
-
-
 void setup() {
   Serial.begin(9600);
   delay(1000);
@@ -34,6 +34,7 @@ void setup() {
   }
   delay(1000);
 
+  Serial.println("OTA Initialized");
   readJsonFile();
 
   const char* ssid = configJson["wifi_credentials"][0]["ssid"];
@@ -45,9 +46,11 @@ void setup() {
   setupRoutes();
 
   server.begin();
+
 }
 
 void loop() {
+
     if (mySwitch.available()) {
         unsigned long currentMillis = millis();
 
@@ -73,6 +76,7 @@ void loop() {
     ESP.restart();
     arestart = false;
   }
+
 }
 
 void handleWifiConfiguration(const char* ssid, const char* password, const char* reset) {
@@ -88,6 +92,8 @@ void handleWifiConfiguration(const char* ssid, const char* password, const char*
     }
     mdns();
   }
+
+
 }
 
 void printErrorCodetoSerial(uint8_t errorCode, bool enableSerial){
@@ -171,11 +177,23 @@ void setupRoutes() {
 
   server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
     configJson["LearningEnabled"] = true;
-    request->redirect("/");
+    String content = "{\"success\": true }";
+    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
   });
+
+  
   server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
     configJson["LearningEnabled"] = false;
-    request->redirect("/");
+    String content = "{\"success\": true }";
+    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
   });
 server.on("/deleteRfCode", HTTP_POST, [](AsyncWebServerRequest *request) {
     String codeToDelete = request->arg("code").c_str();

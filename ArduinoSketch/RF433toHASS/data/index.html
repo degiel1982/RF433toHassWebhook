@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="w3.css">
+    <title>Document</title>
+</head>
+<body class="w3-dark-grey">
+    <div class="w3-bar w3-light-grey">
+        <a href="#" onclick="getinfoforPage('home')" class="w3-bar-item w3-button"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 576 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M575.8 255.5c0 18-15 32.1-32 32.1h-32l.7 160.2c0 2.7-.2 5.4-.5 8.1V472c0 22.1-17.9 40-40 40H456c-1.1 0-2.2 0-3.3-.1c-1.4 .1-2.8 .1-4.2 .1H416 392c-22.1 0-40-17.9-40-40V448 384c0-17.7-14.3-32-32-32H256c-17.7 0-32 14.3-32 32v64 24c0 22.1-17.9 40-40 40H160 128.1c-1.5 0-3-.1-4.5-.2c-1.2 .1-2.4 .2-3.6 .2H104c-22.1 0-40-17.9-40-40V360c0-.9 0-1.9 .1-2.8V287.6H32c-18 0-32-14-32-32.1c0-9 3-17 10-24L266.4 8c7-7 15-8 22-8s15 2 21 7L564.8 231.5c8 7 12 15 11 24z"/></svg> Home</a>
+        <a href="#" onclick="getinfoforPage('settings')" class="w3-bar-item w3-button w3-hide-small"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg> Settings</a>
+        <a href="#" id="learnbutton1" onclick="learningMode('enable')" class="w3-bar-item w3-button w3-hide-small"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M64 80c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V96c0-8.8-7.2-16-16-16H64zM0 96C0 60.7 28.7 32 64 32H384c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM200 344V280H136c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V168c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H248v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z"/></svg> Add Device</a>
+
+        <a href="javascript:void(0)" class="w3-bar-item w3-button w3-right w3-hide-large w3-hide-medium" onclick="show_hide_navbar()">&#9776;</a>
+      </div>
+      
+      <div id="demo" class="w3-bar-block w3-light-grey w3-hide w3-hide-large w3-hide-medium">
+        <a href="#" onclick="getinfoforPage('settings')" class="w3-bar-item w3-button"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M495.9 166.6c3.2 8.7 .5 18.4-6.4 24.6l-43.3 39.4c1.1 8.3 1.7 16.8 1.7 25.4s-.6 17.1-1.7 25.4l43.3 39.4c6.9 6.2 9.6 15.9 6.4 24.6c-4.4 11.9-9.7 23.3-15.8 34.3l-4.7 8.1c-6.6 11-14 21.4-22.1 31.2c-5.9 7.2-15.7 9.6-24.5 6.8l-55.7-17.7c-13.4 10.3-28.2 18.9-44 25.4l-12.5 57.1c-2 9.1-9 16.3-18.2 17.8c-13.8 2.3-28 3.5-42.5 3.5s-28.7-1.2-42.5-3.5c-9.2-1.5-16.2-8.7-18.2-17.8l-12.5-57.1c-15.8-6.5-30.6-15.1-44-25.4L83.1 425.9c-8.8 2.8-18.6 .3-24.5-6.8c-8.1-9.8-15.5-20.2-22.1-31.2l-4.7-8.1c-6.1-11-11.4-22.4-15.8-34.3c-3.2-8.7-.5-18.4 6.4-24.6l43.3-39.4C64.6 273.1 64 264.6 64 256s.6-17.1 1.7-25.4L22.4 191.2c-6.9-6.2-9.6-15.9-6.4-24.6c4.4-11.9 9.7-23.3 15.8-34.3l4.7-8.1c6.6-11 14-21.4 22.1-31.2c5.9-7.2 15.7-9.6 24.5-6.8l55.7 17.7c13.4-10.3 28.2-18.9 44-25.4l12.5-57.1c2-9.1 9-16.3 18.2-17.8C227.3 1.2 241.5 0 256 0s28.7 1.2 42.5 3.5c9.2 1.5 16.2 8.7 18.2 17.8l12.5 57.1c15.8 6.5 30.6 15.1 44 25.4l55.7-17.7c8.8-2.8 18.6-.3 24.5 6.8c8.1 9.8 15.5 20.2 22.1 31.2l4.7 8.1c6.1 11 11.4 22.4 15.8 34.3zM256 336a80 80 0 1 0 0-160 80 80 0 1 0 0 160z"/></svg> Settings</a>
+        <a href="#" id="learnbutton2" onclick="learningMode('enable')" class="w3-bar-item w3-button"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 448 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M64 80c-8.8 0-16 7.2-16 16V416c0 8.8 7.2 16 16 16H384c8.8 0 16-7.2 16-16V96c0-8.8-7.2-16-16-16H64zM0 96C0 60.7 28.7 32 64 32H384c35.3 0 64 28.7 64 64V416c0 35.3-28.7 64-64 64H64c-35.3 0-64-28.7-64-64V96zM200 344V280H136c-13.3 0-24-10.7-24-24s10.7-24 24-24h64V168c0-13.3 10.7-24 24-24s24 10.7 24 24v64h64c13.3 0 24 10.7 24 24s-10.7 24-24 24H248v64c0 13.3-10.7 24-24 24s-24-10.7-24-24z"/></svg> Add Device</a>
+
+      </div>
+    <div id="serverstatus"></div>
+    <div id="learningstatus"></div>
+    <div id="content"></div>
+    <div id="cards" class="w3-container"></div>
+
+      
+<script>
+let IntervalIsEnabled = false
+let requestInProgress = false;
+let loaded_page
+
+//This is needed for the navigation bar to show/hide
+  function show_hide_navbar() {
+    var x = document.getElementById("demo");
+    if (x.className.indexOf("w3-show") == -1) {
+      x.className += " w3-show";
+    } else { 
+      x.className = x.className.replace(" w3-show", "");
+    }
+  }
+
+//This gets the information from the esp32 and display it on the webpage according to the info
+function getinfoforPage(page) {
+
+  //this avoids queued requests when not connecting
+  if (requestInProgress) {
+        return;
+    }
+    requestInProgress = true;
+    fetch('/getPageInfo')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if(IntervalIsEnabled){
+            clearInterval(refreshInterval);
+        }
+        IntervalIsEnabled = false
+       // if it make a connection it should remove a server is offline message
+        document.getElementById('serverstatus').innerHTML = '';
+        
+        //debugging
+        console.log(data)
+
+        //if learning is enabled it should present a learning mode status
+        if(data.LearningEnabled){
+          document.getElementById('learnbutton1').style.display = 'none';
+          document.getElementById('learnbutton2').style.display = 'none';
+          //adding the message
+          document.getElementById("learningstatus").innerHTML = '<div class="w3-container w3-orange"><p class="w3-large">Device is in learning mode<button onclick="learningMode(\'disable\')"><svg xmlns="http://www.w3.org/2000/svg" height="16" width="16" viewBox="0 0 512 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm192-96H320c17.7 0 32 14.3 32 32V320c0 17.7-14.3 32-32 32H192c-17.7 0-32-14.3-32-32V192c0-17.7 14.3-32 32-32z"/></svg>STOP</button></p></div>';
+          //removes the add button when learning mode is enabled
+
+          //if the interval is not set yet then set it otherwise skip 
+          if(!IntervalIsEnabled){
+            refreshInterval = setInterval(function() {
+    // Replace 'yourPageValue' with the actual value you want to pass for the 'page' parameter
+    getinfoforPage('home');
+}, 2000);
+          }          
+          IntervalIsEnabled = true
+     
+        }
+        else{
+          
+     
+          document.getElementById('learnbutton1').style.display = '';
+          document.getElementById('learnbutton2').style.display = '';
+          
+          //removing the message
+          document.getElementById("learningstatus").innerHTML = ''
+          
+          //if the interval is not already cleared then clear it
+          if(IntervalIsEnabled){
+            clearInterval(refreshInterval);
+          }
+          IntervalIsEnabled = false
+          
+        }
+        if(page == "settings"){
+          loaded_page = "settings"
+          document.getElementById('content').innerHTML = ''
+          document.getElementById('serverstatus').innerHTML = ''
+    document.getElementById('cards').innerHTML = ''
+          data.wifi_credentials.forEach(code => {
+                document.getElementById('content').innerHTML = '<form class="w3-container w3-card-4 w3-light-grey" action="/savewifi" method="POST"><h2 class="w3-text-blue"><svg xmlns="http://www.w3.org/2000/svg" height="26" width="26" viewBox="0 0 640 512"><!--!Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2023 Fonticons, Inc.--><path d="M54.2 202.9C123.2 136.7 216.8 96 320 96s196.8 40.7 265.8 106.9c12.8 12.2 33 11.8 45.2-.9s11.8-33-.9-45.2C549.7 79.5 440.4 32 320 32S90.3 79.5 9.8 156.7C-2.9 169-3.3 189.2 8.9 202s32.5 13.2 45.2 .9zM320 256c56.8 0 108.6 21.1 148.2 56c13.3 11.7 33.5 10.4 45.2-2.8s10.4-33.5-2.8-45.2C459.8 219.2 393 192 320 192s-139.8 27.2-190.5 72c-13.3 11.7-14.5 31.9-2.8 45.2s31.9 14.5 45.2 2.8c39.5-34.9 91.3-56 148.2-56zm64 160a64 64 0 1 0 -128 0 64 64 0 1 0 128 0z"/></svg>  Wifi Configuration</h2><p>      <label class="w3-text-blue"><b>SSID</b></label><input class="w3-input w3-border" name="ssid" type="text" value="'+ code.ssid+'"></p><p><label class="w3-text-blue"><b>Password</b></label><input class="w3-input w3-border" name="password" type="password" value="'+ code.password+'"></p><p><button class="w3-btn w3-blue">Save</button></p></form>'
+          })
+        }
+
+        if(page == "home"){
+    loaded_page = "home"  
+    document.getElementById('serverstatus').innerHTML = ''
+    document.getElementById('content').innerHTML = ''
+    let cardsContainer = document.getElementById('cards');
+    cardsContainer.innerHTML = '';  // Clear previous content
+    data.rfcodes.forEach(code => {
+        // Create a card and append it to the 'cards' container
+        let card = document.createElement('div');
+        
+        card.className = 'w3-card-4 w3-light-grey'; // Add a class for styling if needed
+        card.innerHTML = '<p><h4>RF Code:' + code.code + '</h4></p>'; // Replace 'someProperty' with the actual property you want to display
+        cardsContainer.appendChild(card);
+    })
+}
+
+        requestInProgress = false;
+      })
+      .catch(error => {
+        // if it can not make a connection it should display a server is offline message
+        document.getElementById('serverstatus').innerHTML = '<div class="w3-container w3-red"><p>Server is offline</p></div>';
+        if(!IntervalIsEnabled){
+          refreshInterval = setInterval(function() {
+    // Replace 'yourPageValue' with the actual value you want to pass for the 'page' parameter
+    getinfoforPage('home');
+}, 2000);
+          }          
+          IntervalIsEnabled = true
+          requestInProgress = false;
+      });
+  }
+
+//this enables th learn mode in the esp32
+function learningMode(status){
+  let a;
+  if(status =="enable"){
+    a = "enableLearn";
+  }
+  if(status == "disable"){
+    a = "disableLearn";
+  }
+  fetch('/' + a)
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if(data.success){
+        //if learning mode is enabled it should refresh the page
+        window.location.reload("/")
+     
+      }
+    })
+    
+    .catch(error => console.error('Error fetching JSON:', error));
+}
+
+
+
+
+  //when the page loads it gets the information and displays it
+  getinfoforPage('home');
+
+
+    </script>
+    </body>
+ 
