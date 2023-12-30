@@ -136,11 +136,7 @@ void handleWifiConfiguration(const char* ssid, const char* password, const char*
 
 }
 
-void printErrorCodetoSerial(uint8_t errorCode, bool enableSerial){
-  if(enableSerial){
-    Serial.println("Error Code: " + String(errorCode));
-  }
-}
+
 
 
 bool checkRF(unsigned long rfcode){
@@ -276,9 +272,9 @@ void resetConfigFile() {
     }
     configFile.close();
     blankConfigFile.close();
-  } else {
-    printErrorCodetoSerial(3, debug);
-    //Serial.println(F("Error resetting config file"));
+  } 
+  else {
+    Serial.println(F("Error resetting config file"));
   }
 }
 
@@ -310,8 +306,7 @@ void connectToWiFi(const char* ssid, const char* password) {
   }
   
   if (WiFi.status() != WL_CONNECTED) {
-    printErrorCodetoSerial(5, debug);
-    //Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
+    Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
     createAP("rfbridge", "rfbridge");
   }
 }
@@ -321,7 +316,7 @@ void addDevicetoJSON(unsigned long receivedCode){
       for (JsonObject entry : rfcodesArray) {
         if (entry["code"].as<unsigned long>() == receivedCode) {
             // Code already exists, you can choose to update the webhook or reject the new learning attempt
-           printErrorCodetoSerial(6, debug);
+           
             return;
         }
       }
