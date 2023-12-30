@@ -12,7 +12,8 @@
 #define default_AP_Name "rfbridge"
 #define RF_Receiver_Pin 32
 #define WebserverPort 80
-#define JSON_Memory_Size 1024
+#define JSON_Memory_Size 750
+
 
 class RFBridge{
   public:
@@ -121,9 +122,7 @@ void loop() {
     ESP.restart();
     RFBridge.JSON_MEMORY["restart_esp"] = false;
   }
-  
-Serial.println(ESP.getFreeHeap());
-delay(1000);
+
 }
 
 bool handleWifiConfiguration(const char* ssid, const char* password, const char* reset) {
