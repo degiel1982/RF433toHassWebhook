@@ -10,12 +10,14 @@
 #define configFilePath "/config.json"
 #define configResetFilePath "/blank_config.json"
 #define default_AP_Name "rfbridge"
+#define RF_Receiver_Pin 32
+#define WebserverPort 80
+#define JSON_Memory_Size 1024
 
-
-class FileSystemSPIFFS{
+class RFBridge{
   public:
   
-  DynamicJsonDocument JSON_MEMORY{1024};
+  DynamicJsonDocument JSON_MEMORY{JSON_Memory_Size};
   
   bool init(){
     if (!SPIFFS.begin()) {
@@ -52,8 +54,8 @@ class FileSystemSPIFFS{
     
 };
 
-FileSystemSPIFFS FileSystemSPIFFS;
-AsyncWebServer server(80);
+RFBridge RFBridge;
+AsyncWebServer server(WebserverPort);
 
 
 RCSwitch mySwitch = RCSwitch();
@@ -63,16 +65,16 @@ void setup() {
   Serial.begin(9600);
   if(Serial){
     delay(1000);
-    mySwitch.enableReceive(32);
+    mySwitch.enableReceive(RF_Receiver_Pin);
     
-    if(FileSystemSPIFFS.init()){
+    if(RFBridge.init()){
       Serial.println(F("Mounting the file system"));      
       delay(1000);
-      if(FileSystemSPIFFS.readJsonFileToMemory()){
+      if(RFBridge.readJsonFileToMemory()){
         Serial.println(F("JSON copied to memory"));
         
         Serial.println(F("Starting WIFI Configuration"));
-        if(handleWifiConfiguration(FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["ssid"], FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["password"], FileSystemSPIFFS.JSON_MEMORY["reset"])){
+        if(handleWifiConfiguration(RFBridge.JSON_MEMORY["wifi_credentials"][0]["ssid"], RFBridge.JSON_MEMORY["wifi_credentials"][0]["password"], RFBridge.JSON_MEMORY["reset"])){
           Serial.println(F("Wifi Connected"));
         }else{
           Serial.println(F("AP Connected"));
@@ -99,7 +101,7 @@ void setup() {
 void loop() {
   if (mySwitch.available()) {
     Serial.println("RF Available");
-    if (FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"]) {
+    if (RFBridge.JSON_MEMORY["LearningEnabled"]) {
       addDevicetoJSON(mySwitch.getReceivedValue());
       delay(3000);
     } 
@@ -114,26 +116,27 @@ void loop() {
     mySwitch.resetAvailable();
   }
   
-  if (FileSystemSPIFFS.JSON_MEMORY["restart_esp"]) {
+  if (RFBridge.JSON_MEMORY["restart_esp"]) {
     delay(1000);
     ESP.restart();
-    FileSystemSPIFFS.JSON_MEMORY["restart_esp"] = false;
+    RFBridge.JSON_MEMORY["restart_esp"] = false;
   }
-
+  
+Serial.println(ESP.getFreeHeap());
+delay(1000);
 }
 
 bool handleWifiConfiguration(const char* ssid, const char* password, const char* reset) {
   if (strcmp(reset, "true") == 0) {
     resetConfigFile();
-    FileSystemSPIFFS.JSON_MEMORY["restart_esp"] = true;
+    RFBridge.JSON_MEMORY["restart_esp"] = true;
   } 
   else if (strcmp(reset, "false") == 0) {
     Serial.println("Checking if the default ap name is the same as the current ssid name");
-    FileSystemSPIFFS.JSON_MEMORY["isWifiSet"] = (strcmp(ssid, default_AP_Name) != 0);
-    if (!FileSystemSPIFFS.JSON_MEMORY["isWifiSet"]) {
-      Serial.println("It is the same and the AP is going to wifi setup mode(default)");
+    if (!RFBridge.JSON_MEMORY["isWifiSet"]) {
+      Serial.println("Wifi is not set switching to AP");
       if(createAP(ssid, password)){
-        Serial.println("Setting up AP Mode");
+        Serial.println("AP Mode started");
       }else{
         Serial.println("Error with setting up AP Mode");
       }
@@ -152,7 +155,7 @@ bool handleWifiConfiguration(const char* ssid, const char* password, const char*
 }
 
 bool checkRF(unsigned long rfcode){
-  JsonArray rfcodesArray = FileSystemSPIFFS.JSON_MEMORY["rfcodes"].as<JsonArray>();
+  JsonArray rfcodesArray = RFBridge.JSON_MEMORY["rfcodes"].as<JsonArray>();
   for (JsonObject entry : rfcodesArray) {
     if (entry["code"].as<unsigned long>() == rfcode) {
       Serial.println("Match found");
@@ -170,10 +173,10 @@ void sendWebhook(unsigned long rfcode) {
 
             String url = "/api/webhook/" + String(rfcode);
 
-            if (client.connect(FileSystemSPIFFS.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>().c_str(), FileSystemSPIFFS.JSON_MEMORY["webhook_settings"][0]["homeAssistantPort"].as<int>())) {
+            if (client.connect(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>().c_str(), RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantPort"].as<int>())) {
                 // Make a POST request
                 client.print("POST " + url + " HTTP/1.1\r\n");
-                client.print("Host: " + String(FileSystemSPIFFS.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>()) + "\r\n");
+                client.print("Host: " + String(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>()) + "\r\n");
                 client.print("Connection: close\r\n");
                 client.print("Content-Length: 0\r\n\r\n");
  
@@ -189,7 +192,7 @@ void sendWebhook(unsigned long rfcode) {
 void setupRoutes() {
   
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    const char* page = (FileSystemSPIFFS.JSON_MEMORY["isWifiSet"]) ? "/index.html" : "/wificonfig.html";
+    const char* page = (RFBridge.JSON_MEMORY["isWifiSet"]) ? "/index.html" : "/wificonfig.html";
     request->send(SPIFFS, page, String(), false);
   });
 
@@ -198,17 +201,14 @@ void setupRoutes() {
   });
 
   server.on("/savewifi", HTTP_POST, [](AsyncWebServerRequest *request) {
-    String ssid = request->arg("ssid");
-    String password = request->arg("password");
-
-    FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["ssid"] = ssid.c_str();
-    FileSystemSPIFFS.JSON_MEMORY["wifi_credentials"][0]["password"] = password.c_str();
-    FileSystemSPIFFS.JSON_MEMORY["reset"] = "false";
-
-   FileSystemSPIFFS.saveJsonMemoryToFile();
+    RFBridge.JSON_MEMORY["wifi_credentials"][0]["ssid"] = request->arg("ssid").c_str();
+    RFBridge.JSON_MEMORY["wifi_credentials"][0]["password"] = request->arg("password").c_str();
+    RFBridge.JSON_MEMORY["reset"] = "false";
+    RFBridge.JSON_MEMORY["isWifiSet"] = "true";
+    RFBridge.saveJsonMemoryToFile();
     request->redirect("/");
     
-    FileSystemSPIFFS.JSON_MEMORY["restart_esp"] = true;
+    RFBridge.JSON_MEMORY["restart_esp"] = true;
   });
   
   server.on("/getPageInfo", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -216,7 +216,7 @@ void setupRoutes() {
   });
 
   server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = true;
+    RFBridge.JSON_MEMORY["LearningEnabled"] = true;
     String content = "{\"success\": true }";
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -227,7 +227,7 @@ void setupRoutes() {
 
   
   server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = false;
+    RFBridge.JSON_MEMORY["LearningEnabled"] = false;
     String content = "{\"success\": true }";
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
@@ -253,7 +253,7 @@ void sendJSONToClient(AsyncWebServerRequest *request) {
   
     // Convert the DynamicJsonDocument to a string
     String content;
-    serializeJson(FileSystemSPIFFS.JSON_MEMORY, content);
+    serializeJson(RFBridge.JSON_MEMORY, content);
 
     // Create an AsyncWebServerResponse instance and set CORS headers
     AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
@@ -318,12 +318,14 @@ void connectToWiFi(const char* ssid, const char* password) {
   if (WiFi.status() != WL_CONNECTED) {
   
     Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
-    createAP(FileSystemSPIFFS.JSON_MEMORY["default_AP_Name"], FileSystemSPIFFS.JSON_MEMORY["default_AP_Name"]);
+    RFBridge.JSON_MEMORY["isWifiSet"] = false;
+    RFBridge.saveJsonMemoryToFile();
+    RFBridge.JSON_MEMORY["restart_esp"] = true;
   }
 }
 
 void addDevicetoJSON(unsigned long receivedCode){
-  JsonArray rfcodesArray = FileSystemSPIFFS.JSON_MEMORY["rfcodes"].as<JsonArray>();
+  JsonArray rfcodesArray = RFBridge.JSON_MEMORY["rfcodes"].as<JsonArray>();
       for (JsonObject entry : rfcodesArray) {
         if (entry["code"].as<unsigned long>() == receivedCode) {
             // Code already exists, you can choose to update the webhook or reject the new learning attempt
@@ -333,8 +335,8 @@ void addDevicetoJSON(unsigned long receivedCode){
       }
          JsonObject newEntry = rfcodesArray.createNestedObject();
           newEntry["code"] = receivedCode;
-          FileSystemSPIFFS.JSON_MEMORY["LearningEnabled"] = false;
-          FileSystemSPIFFS.saveJsonMemoryToFile();
+          RFBridge.JSON_MEMORY["LearningEnabled"] = false;
+          RFBridge.saveJsonMemoryToFile();
         
     
 }

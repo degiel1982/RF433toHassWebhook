@@ -1,5 +1,4 @@
 {
-
     "reset":"false",
     "LearningEnabled": false,
     "restart_esp": false,
@@ -7,9 +6,7 @@
     "mdns_name":"rfbridge", 
     "isWebhookSet":false,
     "rfcodes":[
-    
     ],
-
     "wifi_credentials":[
         {
             "ssid":"rfbridge",
@@ -18,8 +15,8 @@
     ],
     "webhook_settings":[
         {
-            "homeAssistantIP":"homeassistant.local",
-            "homeAssistantPort":8123,
+            "homeAssistantIP":"192.168.68.162",
+            "homeAssistantPort":443,
             "setSecure": false
         }
     ]
