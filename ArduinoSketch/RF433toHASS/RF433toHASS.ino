@@ -142,9 +142,7 @@ bool handleWifiConfiguration(const char* ssid, const char* password, const char*
     } 
     else {
       connectToWiFi(ssid, password);
-      
     }
-   
   }
   else{
     return false;
