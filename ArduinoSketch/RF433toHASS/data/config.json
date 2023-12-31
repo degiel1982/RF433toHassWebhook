@@ -15,8 +15,8 @@
     ],
     "webhook_settings":[
         {
-            "homeAssistantIP":"192.168.68.162",
-            "homeAssistantPort":443,
+            "homeAssistantIP":"",
+            "homeAssistantPort":8123,
             "setSecure": false
         }
     ]
