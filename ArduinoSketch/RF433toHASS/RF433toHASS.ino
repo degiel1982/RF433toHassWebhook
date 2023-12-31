@@ -99,30 +99,40 @@ void setup() {
   }
 
 
+unsigned long lastWebhookTime = 0;
+unsigned long debounceInterval = 1000;
+unsigned long lastReceivedCode = 0; // Variable to store the last received code
+
 void loop() {
   if (mySwitch.available()) {
     Serial.println("RF Available");
-    if (RFBridge.JSON_MEMORY["LearningEnabled"]) {
-      addDevicetoJSON(mySwitch.getReceivedValue());
-      delay(3000);
-    } 
-    else {
-      
-      if(checkRF(mySwitch.getReceivedValue())){
+    unsigned long receivedCode = mySwitch.getReceivedValue();
 
-       Serial.println("Sending Webhook");
-        sendWebhook(mySwitch.getReceivedValue());
+    if (RFBridge.JSON_MEMORY["LearningEnabled"]) {
+      addDevicetoJSON(receivedCode);
+      delay(3000);
+    } else {
+      if (checkRF(receivedCode)) {
+        if (receivedCode != lastReceivedCode || millis() - lastWebhookTime > debounceInterval) {
+          Serial.println("Sending Webhook");
+          sendWebhook(receivedCode);
+          lastWebhookTime = millis();
+         
+        } else {
+          Serial.println("Webhook debounced");
+        }
       }
     }
+
+    lastReceivedCode = receivedCode;
     mySwitch.resetAvailable();
   }
-  
+
   if (RFBridge.JSON_MEMORY["restart_esp"]) {
     delay(1000);
     ESP.restart();
     RFBridge.JSON_MEMORY["restart_esp"] = false;
   }
-
 }
 
 bool handleWifiConfiguration(const char* ssid, const char* password, const char* reset) {
@@ -161,36 +171,25 @@ bool checkRF(unsigned long rfcode){
   }
   return false;
 }
+
 void sendWebhook(unsigned long rfcode) {
-
- Serial.println("Sending webhook");
-
-    WiFiClientSecure client;
-    client.setInsecure();  // Disable SSL certificate validation
-
-            String url = "/api/webhook/" + String(rfcode);
-
-            if (client.connect(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>().c_str(), RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantPort"].as<int>())) {
-                // Make a POST request
-                client.print("POST " + url + " HTTP/1.1\r\n");
-                client.print("Host: " + String(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>()) + "\r\n");
-                client.print("Connection: close\r\n");
-                client.print("Content-Length: 0\r\n\r\n");
- 
-                client.stop();
-                
-            }
- 
-            return;
+  WiFiClientSecure client;
+  client.setInsecure();  // Disable SSL certificate validation
+  String url = "/api/webhook/" + String(rfcode);
+    if (client.connect(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>().c_str(), RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantPort"].as<int>())) {
+      // Make a POST request
+      client.print("POST " + url + " HTTP/1.1\r\n");
+      client.print("Host: " + String(RFBridge.JSON_MEMORY["webhook_settings"][0]["homeAssistantIP"].as<String>()) + "\r\n");
+      client.print("Connection: close\r\n");
+      client.print("Content-Length: 0\r\n\r\n");
+      client.stop();
+    }
 }
-
-
 
 void setupRoutes() {
   
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-    const char* page = (RFBridge.JSON_MEMORY["isWifiSet"]) ? "/index.html" : "/wificonfig.html";
-    request->send(SPIFFS, page, String(), false);
+    request->send(SPIFFS, "/index.html", String(), false);
   });
 
   server.on("/w3.css", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -209,30 +208,37 @@ void setupRoutes() {
   });
   
   server.on("/getPageInfo", HTTP_GET, [](AsyncWebServerRequest *request){
-    sendJSONToClient(request);
+    sendJsonMemoryToWebpage(request);
   });
 
   server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
     RFBridge.JSON_MEMORY["LearningEnabled"] = true;
-    String content = "{\"success\": true }";
-    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
-    response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-    request->send(response);
+    sendJsonResponse(*request, "{\"success\": true }");
   });
 
   
   server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
     RFBridge.JSON_MEMORY["LearningEnabled"] = false;
-    String content = "{\"success\": true }";
-    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
+    sendJsonResponse(*request, "{\"success\": true }");
+  });
+
+}
+
+
+void sendJsonResponse(AsyncWebServerRequest& request, String content) {
+    AsyncWebServerResponse *response = request.beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
     response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-    request->send(response);
-  });
+    request.send(response);
+}
 
+void sendJsonMemoryToWebpage(AsyncWebServerRequest *request) {
+  
+    // Convert the DynamicJsonDocument to a string
+    String content;
+    serializeJson(RFBridge.JSON_MEMORY, content);
+    sendJsonResponse(*request, content);
 }
 
 /*  
@@ -244,24 +250,6 @@ server.on("/deleteRfCode", HTTP_POST, [](AsyncWebServerRequest *request) {server
     request->send(200, "text/plain", "RF code deleted successfully");
 });
 */  
-
-
-void sendJSONToClient(AsyncWebServerRequest *request) {
-  
-    // Convert the DynamicJsonDocument to a string
-    String content;
-    serializeJson(RFBridge.JSON_MEMORY, content);
-
-    // Create an AsyncWebServerResponse instance and set CORS headers
-    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", content);
-    response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
-
-    // Send the response
-    request->send(response);
-}
-
 
 
 bool createAP(const char* ssid, const char* password) {
