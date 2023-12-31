@@ -9,8 +9,8 @@
     ],
     "wifi_credentials":[
         {
-            "ssid":"rfbridge",
-            "password":"rfbridge"
+            "ssid":"",
+            "password":""
         }
     ],
     "webhook_settings":[
