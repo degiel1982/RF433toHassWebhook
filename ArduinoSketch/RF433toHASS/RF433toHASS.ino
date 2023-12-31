@@ -144,7 +144,7 @@ bool handleWifiConfiguration(const char* ssid, const char* password, const char*
     Serial.println("Checking if the default ap name is the same as the current ssid name");
     if (!RFBridge.JSON_MEMORY["isWifiSet"]) {
       Serial.println("Wifi is not set switching to AP");
-      if(createAP(ssid, password)){
+      if(createAP(default_AP_Name, default_AP_Name)){
         Serial.println("AP Mode started");
       }else{
         Serial.println("Error with setting up AP Mode");
@@ -228,7 +228,7 @@ void setupRoutes() {
 void sendJsonResponse(AsyncWebServerRequest& request, String content) {
     AsyncWebServerResponse *response = request.beginResponse(200, "application/json", content);
     response->addHeader("Access-Control-Allow-Origin", "*");
-    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Methods", "GET");
     response->addHeader("Access-Control-Allow-Headers", "Content-Type");
     request.send(response);
 }
@@ -282,26 +282,15 @@ void mdns(){
 }
 
 void connectToWiFi(const char* ssid, const char* password) {
-  
   int attempts = 0;
-  while (attempts < 5) {
+  
+  while (attempts < 5 && WiFi.status() != WL_CONNECTED) {
     WiFi.begin(ssid, password);
-    while (WiFi.status() != WL_CONNECTED && attempts < 5) {
-      delay(1000);
-      attempts++;
-    }
-    
-    if (WiFi.status() == WL_CONNECTED) {
-      
-      break;
-    } else {
-      Serial.println(F("Connection failed. Retrying..."));
-      attempts++;
-    }
+    delay(1000);
+    attempts++;
   }
-  
+
   if (WiFi.status() != WL_CONNECTED) {
-  
     Serial.println(F("Failed to connect to WiFi after multiple attempts. Reverting to default WiFi credentials and starting AP."));
     RFBridge.JSON_MEMORY["isWifiSet"] = false;
     RFBridge.saveJsonMemoryToFile();
