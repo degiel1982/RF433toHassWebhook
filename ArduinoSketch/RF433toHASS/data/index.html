@@ -56,6 +56,7 @@ function getinfoforPage(page) {
         return response.json();
       })
       .then(data => {
+        
         if(IntervalIsEnabled){
             clearInterval(refreshInterval);
         }
@@ -86,7 +87,9 @@ function getinfoforPage(page) {
         }
         else{
           
-     
+          if(!data.isWifiSet){
+          page = "settings"
+          }
           document.getElementById('learnbutton1').style.display = '';
           document.getElementById('learnbutton2').style.display = '';
           
