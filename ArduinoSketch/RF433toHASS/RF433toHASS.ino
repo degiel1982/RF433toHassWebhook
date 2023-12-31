@@ -222,6 +222,41 @@ void setupRoutes() {
     sendJsonResponse(*request, "{\"success\": true }");
   });
 
+  server.on("/test", HTTP_POST, [](AsyncWebServerRequest *request){
+    // Handle the POST request here
+
+    // Check if the request has a JSON payload
+    if (request->hasParam("plain", true)) {
+      // Get the JSON payload
+      String jsonPayload = request->getParam("plain", true)->value();
+
+      // Parse the JSON data
+      DynamicJsonDocument jsonDocument(1024); // Adjust the size as needed
+      DeserializationError error = deserializeJson(jsonDocument, jsonPayload);
+
+      // Check for parsing errors
+      if (error) {
+        Serial.print(F("JSON parsing failed: "));
+        Serial.println(error.c_str());
+      } else {
+        // Extract data from the JSON document
+        const char* description = jsonDocument["newProduct"]["description"];
+        int price = jsonDocument["newProduct"]["price"];
+
+        // Perform actions with extracted data
+        Serial.print(F("Description: "));
+        Serial.println(description);
+        Serial.print(F("Price: "));
+        Serial.println(price);
+      }
+    } else {
+      Serial.println(F("No JSON payload in the request."));
+    }
+
+    // Send a response back to the client
+    String jsonResponse = "{\"status\": \"success\"}";
+    request->send(200, "application/json", jsonResponse);
+  });
 }
 
 
