@@ -99,32 +99,25 @@ void setup() {
   }
 
 
-unsigned long lastWebhookTime = 0;
-unsigned long debounceInterval = 1000;
-unsigned long lastReceivedCode = 0; // Variable to store the last received code
+
 
 void loop() {
   if (mySwitch.available()) {
     Serial.println("RF Available");
-    unsigned long receivedCode = mySwitch.getReceivedValue();
 
     if (RFBridge.JSON_MEMORY["LearningEnabled"]) {
-      addDevicetoJSON(receivedCode);
+      addDevicetoJSON(mySwitch.getReceivedValue());
       delay(3000);
     } else {
-      if (checkRF(receivedCode)) {
-        if (receivedCode != lastReceivedCode || millis() - lastWebhookTime > debounceInterval) {
+      if (checkRF(mySwitch.getReceivedValue())) {
           Serial.println("Sending Webhook");
-          sendWebhook(receivedCode);
-          lastWebhookTime = millis();
-         
-        } else {
-          Serial.println("Webhook debounced");
-        }
+          sendWebhook(mySwitch.getReceivedValue());
+          delay(1000);
+        
       }
     }
 
-    lastReceivedCode = receivedCode;
+  
     mySwitch.resetAvailable();
   }
 
@@ -206,57 +199,47 @@ void setupRoutes() {
     
     RFBridge.JSON_MEMORY["restart_esp"] = true;
   });
-  
-  server.on("/getPageInfo", HTTP_GET, [](AsyncWebServerRequest *request){
-    sendJsonMemoryToWebpage(request);
-  });
 
-  server.on("/enableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    RFBridge.JSON_MEMORY["LearningEnabled"] = true;
-    sendJsonResponse(*request, "{\"success\": true }");
-  });
+server.on("/api", HTTP_POST, [](AsyncWebServerRequest *request){
+  // Check if the request has a JSON payload
+  if (request->hasParam("plain", true)) {
+    // Parse the JSON data
+    DynamicJsonDocument tempJSON(128); // Adjust the size as needed
+    DeserializationError error = deserializeJson(tempJSON, request->getParam("plain", true)->value());
 
-  
-  server.on("/disableLearn", HTTP_GET, [](AsyncWebServerRequest *request){
-    RFBridge.JSON_MEMORY["LearningEnabled"] = false;
-    sendJsonResponse(*request, "{\"success\": true }");
-  });
-
-  server.on("/test", HTTP_POST, [](AsyncWebServerRequest *request){
-    // Handle the POST request here
-
-    // Check if the request has a JSON payload
-    if (request->hasParam("plain", true)) {
-      // Get the JSON payload
-      String jsonPayload = request->getParam("plain", true)->value();
-
-      // Parse the JSON data
-      DynamicJsonDocument jsonDocument(1024); // Adjust the size as needed
-      DeserializationError error = deserializeJson(jsonDocument, jsonPayload);
-
-      // Check for parsing errors
-      if (error) {
-        Serial.print(F("JSON parsing failed: "));
-        Serial.println(error.c_str());
-      } else {
-        // Extract data from the JSON document
-        const char* description = jsonDocument["newProduct"]["description"];
-        int price = jsonDocument["newProduct"]["price"];
-
-        // Perform actions with extracted data
-        Serial.print(F("Description: "));
-        Serial.println(description);
-        Serial.print(F("Price: "));
-        Serial.println(price);
-      }
+    // Check for parsing errors
+    if (error) {
+      Serial.print(F("JSON parsing failed: "));
+      Serial.println(error.c_str());
+      sendJsonResponse(*request, "{\"error\": \"" + String(error.c_str()) + "\" }");
     } else {
-      Serial.println(F("No JSON payload in the request."));
-    }
+        //check command is "learning mode"
+        if(strcmp(tempJSON["command"], "learningmode") == 0){
+          //check if the parameter is false or true for disabling/enabling learning mode
+          if(tempJSON["parameter"].as<bool>()){
+            RFBridge.JSON_MEMORY["LearningEnabled"] = true;
+            sendJsonResponse(*request, "{\"success\": true, \"message\":\"Learning mode enabled\" }");
+          }
+          else{
+            RFBridge.JSON_MEMORY["LearningEnabled"] = false;
+            sendJsonResponse(*request, "{\"success\": true, \"message\":\"Learning mode disabled\" }");
+          }
 
-    // Send a response back to the client
-    String jsonResponse = "{\"status\": \"success\"}";
-    request->send(200, "application/json", jsonResponse);
-  });
+        }
+        else if(strcmp(tempJSON["command"], "getpageinfo") == 0){
+             sendJsonMemoryToWebpage(request);
+        }
+        else{
+        sendJsonResponse(*request, "{\"error\": \"command unknown\" }");
+        }
+    }
+  } else {
+    Serial.println(F("No JSON payload in the request."));
+    
+  }
+});
+
+
 }
 
 
